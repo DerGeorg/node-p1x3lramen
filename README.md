@@ -108,7 +108,7 @@ mqtt: {
   port: 1883,
   user: "username",
   pw: "password",
-  topic: "divoom/pixoo",
+  topic: "/divoom/pixoo",
   clientId: "pixooAdapter"
 }
 ```
@@ -119,9 +119,12 @@ mqtt: {
 
 ### MQTT Api
 An MQTT Api entry is build up like this: `<TOPIC>/<COMMAND>` :  `<MESSAGE>`
-- `<TOPIC>/setscore` :  `{"red": 2, "blue": 3}` --> Switches to score mode and sets the scores
-  for red and blue
 
+*In this sample the default topic (`/divoom/pixoo`) will be used* 
+
+- `/divoom/pixoo/set/score` :  `{"red": <num>, "blue": <num>}` --> Switches to score mode and sets the scores
+  for red and blue
+- `/divoom/pixoo/set/img` : `{"path": "<string>"}` --> Displays the image on the Pixoo. With HTTP GET `/api/upload` you can get the path
 
 
 Testing

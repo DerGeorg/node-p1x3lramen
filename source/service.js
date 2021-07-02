@@ -9,6 +9,7 @@ import {
 	testBrightnessIntegration
 } from './integration.js';
 import {rejects} from "assert";
+import {settings} from "cluster";
 
 
 const DEFAULTS = {
@@ -25,7 +26,7 @@ export default class Service {
 		this.app = null;
 		// this.client = new MqttHandler(this.doScore);
 		if(settings.mqtt.on) {
-			this.connect();
+			this.connect(settings.mqtt);
 		}
 		// this.mqttconfig = settings;
 		// this.client = null;
@@ -74,37 +75,7 @@ export default class Service {
 
 		this.app.listen(this.config.port, async () => {
 			console.log(`Listening on http://localhost:${this.config.port}`);
-
 		});
-
-		// if(this.mqttconfig.mqtt.on){
-		// 	console.log("starte mqtt")
-		// 	var options = {
-		// 		port: this.mqttconfig.port,
-		// 		host: this.mqttconfig.address,
-		// 		clientId: this.mqttconfig.clientId,
-		// 		username: this.mqttconfig.username,
-		// 		password: this.mqttconfig.pw,
-		// 		protocol: 'mqtt'
-		// 	}
-		// 	console.log("starte mqtt 2")
-		// 	// var client = mqtt.connect(options)
-		// 	this.client = mqtt.connect('ws://192.168.1.116:1883', {
-		// 		clientId: 'nodePixooClient'
-		// 	});
-		// 	console.log("starte mqtt 3")
-		// 	this.client.on("connect", () => {
-		// 		console.log("MQTT connected");
-		// 		this.client.subscribe("top")
-		// 		setInterval(() => client.publish('presence', `Hello mqtt`), 2000);
-		// 	})
-		// 	console.log("starte mqtt 4")
-		// 	this.client.on('message', function (topic, message) {
-		// 		console.log("topic: " + topic + " msg:" + message)
-		// 	});
-		// 	console.log("starte mqtt 5")
-
-		// }
 	}
 
 	async _upload(req, res) {
@@ -122,17 +93,6 @@ export default class Service {
 				return console.error(err);
 		})
 		return res.status(200).send(uploadPath);
-	}
-
-	async _setImg(req, res) {
-		const settings = {};
-		if (typeof req.query.path === 'string') {
-			settings.path = req.query.path;
-		}
-		await this.device.setImg(settings.path).then(result => {
-			this.connection.writeImage(result.asBinaryBuffer());
-			return this._status(req, res);
-		})
 	}
 
 	async _screenOFF(req, res) {
@@ -286,21 +246,6 @@ export default class Service {
 		return this._status(req, res);
 	}
 
-	async _score(req, res) {
-		const settings = {};
-		if (req.query.red && parseInt(req.query.red, 10)) {
-			settings.red = parseInt(req.query.red, 10);
-		}
-		if (req.query.blue && parseInt(req.query.blue, 10)) {
-			settings.blue = parseInt(req.query.blue, 10);
-		}
-console.log(settings)
-		this.doScore(settings)
-
-		return this._status(req, res);
-	}
-
-
 	async _effect(req, res) {
 		const settings = {};
 		if (req.query.mode && parseInt(req.query.mode, 10)) {
@@ -362,12 +307,84 @@ console.log(settings)
 		return this._status(req, res);
 	}
 
+	/**
+	 * Score REST Api
+	 * Geting the req params and creating settings for doScore
+	 * @param req Request
+	 * @param res Response
+	 * @return {Promise<*>} HTTP Status
+	 * @private
+	 */
+	async _score(req, res) {
+		const settings = {};
+		if (req.query.red && parseInt(req.query.red, 10)) {
+			settings.red = parseInt(req.query.red, 10);
+		}
+		if (req.query.blue && parseInt(req.query.blue, 10)) {
+			settings.blue = parseInt(req.query.blue, 10);
+		}
+		this.doScore(settings)
 
+		return this._status(req, res);
+	}
+
+
+	/**
+	 * Do Score for REST Api & MQTT Api
+	 * @param settings
+	 * @return {Promise<void>}
+	 */
 	async doScore(settings) {
 		const msg = this.device.score(settings);
 		this.connection.writeAll(msg);
 	}
 
+
+	async _setImg(req, res) {
+		const settings = {};
+		if (typeof req.query.path === 'string') {
+			settings.path = req.query.path;
+		}
+		await this.doSetImg(settings);
+		return this._status(req, res);
+	}
+
+	async doSetImg(settings){
+		await this.device.setImg(settings.path).then(result => {
+			this.connection.writeImage(result.asBinaryBuffer());
+		})
+	}
+
+
+	//
+	// MQTT Stuff
+	//
+
+	async doSetImgCb(topic, message){
+		console.log(message)
+		 const json = JSON.parse(message.toString())
+		const settings = {
+		 	path: json.path
+		}
+		if(!this.connection.isConnected()){
+			this.connection.connect().then(() => {
+				new Promise((resolve, reject) => {
+					resolve(this.doSetImg(settings))
+				})
+			})
+		}else {
+			new Promise((resolve, reject) => {
+				resolve(this.doSetImg(settings))
+			})
+		}
+	}
+
+	/**
+	 * Do Score Callback for MQTT
+	 * @param topic topic to received
+	 * @param message Message to received
+	 * @return {Promise<void>}
+	 */
 	async doScoreCb(topic, message){
 		const json = JSON.parse(message.toString())
 		const settings = {
@@ -388,10 +405,18 @@ console.log(settings)
 	}
 
 
-	async connect() {
+	/**
+	 * Connects to MQTT Broker and handles all mqtt trafik
+	 * @param settings MQTT Settings from main.js
+	 * @return {Promise<void>}
+	 */
+	async connect(settings) {
 		// Connect mqtt with credentials (in case of needed, otherwise we can omit 2nd param)
-		this.mqttClient = mqtt.connect('mqtt://192.168.1.116:1883');//, {clientId: 'bgtestnodejs', protocolId: 'mqtt', protocolVersion: 3, connectTimeout:1000, debug:true});//{ username: this.username, password: this.password });
-
+		if(settings.username != "" && settings.pw != ""){
+			this.mqttClient = mqtt.connect(settings.address, { username: settings.username, password: settings.pw});
+		}else {
+			this.mqttClient = mqtt.connect(settings.address);
+		}
 		// Mqtt error calback
 		this.mqttClient.on('error', (err) => {
 			console.log(err);
@@ -404,19 +429,46 @@ console.log(settings)
 		});
 
 		// mqtt subscriptions
-		this.mqttClient.subscribe('mytopic', {qos: 0});
+		//SETTER
+		const setStr = '/set/'
+		this.mqttClient.subscribe(settings.topic + setStr + 'score', {qos: 0});
+		this.mqttClient.subscribe(settings.topic + setStr + 'img', {qos: 0});
+		this.mqttClient.subscribe(settings.topic + setStr + 'visualization', {qos: 0});
+		this.mqttClient.subscribe(settings.topic + setStr + 'screenOff', {qos: 0});
+		this.mqttClient.subscribe(settings.topic + setStr + 'climate', {qos: 0});
+		this.mqttClient.subscribe(settings.topic + setStr + 'brightness', {qos: 0});
+		this.mqttClient.subscribe(settings.topic + setStr + 'clock', {qos: 0});
+		// GETTER
+		const getStr = '/get/'
+		this.mqttClient.subscribe(settings.topic + getStr + 'status', {qos: 0});
+		this.mqttClient.subscribe(settings.topic + getStr + 'connect', {qos: 0});
 
 		// When a message arrives, console.log it
-		this.mqttClient.on('message', async (topic, message) => await this.doScoreCb(topic, message));
+		this.mqttClient.on('message', async (topic, message) => {
+			console.log("TOPIC: " + topic + " MSG " + message.toString())
+			switch (topic){
+				case settings.topic + setStr + 'score':
+					await this.doScoreCb(topic, message)
+					break;
+				case settings.topic + setStr + 'img':
+					console.log("setimg")
+					await this.doSetImgCb(topic, message)
+					break;
+			}
+		});
 
 		this.mqttClient.on('close', () => {
 			console.log(`mqtt client disconnected`);
 		});
 	}
 
-	// Sends a mqtt message to topic: mytopic
-	sendMessage(message) {
-		this.mqttClient.publish('mytopic', message);
+	/**
+	 * Sends MQTT message to current broker
+	 * @param topic Send to topic
+	 * @param message Send the msg
+	 */
+	sendMessage(topic, message) {
+		this.mqttClient.publish(topic, message);
 	}
 
 

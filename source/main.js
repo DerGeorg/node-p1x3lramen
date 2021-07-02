@@ -27,11 +27,11 @@ const settings = {
 	},
 	mqtt: {
 		on: true,
-		address: "192.168.1.116",
+		address: 'mqtt://192.168.1.116:1883',
 		port: 1883,
-		user: "openhab",
-		pw: "openhab",
-		topic: "divoom/pixoo",
+		user: "",
+		pw: "",
+		topic: "/divoom/pixoo",
 		clientId: "pixooAdapter"
 	}
 };
