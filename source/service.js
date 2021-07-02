@@ -1,6 +1,8 @@
 import express from 'express';
 const fileUpload = require('express-fileupload');
 
+var Divoom = require('node-divoom-timebox-evo')
+
 import {
 	testClockIntegration,
 	testLigtingIntegration,
@@ -8,7 +10,6 @@ import {
 	testClimateIntegration,
 	testBrightnessIntegration
 } from './integration.js';
-import Connection from "./connection";
 
 const DEFAULTS = {
 	port: 8000,
@@ -53,6 +54,8 @@ export default class Service {
 		//IMG Feature
 		apiRouter.post("/upload", this._upload.bind(this));
 		apiRouter.get("/img", this._setImg.bind(this));
+		// Text feature
+		apiRouter.get('/text', this._setText.bind(this));
 
 		// routes
 
@@ -68,6 +71,41 @@ export default class Service {
 		this.app.listen(this.config.port, () => {
 			console.log(`Listening on http://localhost:${this.config.port}`);
 		});
+	}
+
+	async _setText(req, res){
+		const settings = {};
+		if (typeof req.query.text === 'string') {
+			settings.text = req.query.text;
+		}
+		var binAnimationBuffer = this.device.setText("TEST TEXT")
+		console.log("binAnBuff return")
+		console.log(binAnimationBuffer)
+		// Then you have to send your animation frame by frame, I suggest that you do no go over 30 message per second, if you do, the timebox will disconnect.
+		// This would generate 512 animation frames.
+		// await this.connection.writeText(binAnimationBuffer);
+		var msgArray = []
+		for (var i = 0; i < binAnimationBuffer._messages.length; i++){
+			// msgArray.push(binAnimationBuffer.getNextAnimationFrame().asBinaryBuffer())
+			// await this.connection.writeAll(binAnimationBuffer.getNextAnimationFrame().asBinaryBuffer())
+			// await this.connection.write(binAnimationBuffer.getNextAnimationFrame().asBinaryBuffer());
+			await this.connection.writeAll(binAnimationBuffer._messages.asBinaryBuffer())
+			// await this.connection.writer(binAnimationBuffer._messages[i].asBinaryBuffer()[0])
+			// console.log(binAnimationBuffer.getNextAnimationFrame().asBinaryBuffer());
+			// this.connection.writeAll(binAnimationBuffer.getNextAnimationFrame().asBinaryBuffer())
+		}
+		// await this.connection.writeText(msgArray);
+		// binAnimationBuffer.messages.forEach(item => {
+		// 	this.connection.write(item.getN);
+		// });
+		// for (var i = 0; i < binAnimationBuffer._messages.length - 1; i++){
+		// 	// var buf = binAnimationBuffer.getNextAnimationFrame().asBinaryBuffer();
+		// 	console.log("buf")
+		// 	var buf = binAnimationBuffer.getNextAnimationFrame().asBinaryBuffer()
+		// 	console.log(buf)
+		// 	this.connection.write(buf);
+		// }
+		return this._status(req, res);
 	}
 
 	async _upload(req, res){
@@ -96,6 +134,7 @@ export default class Service {
 		 }
 		 console.log(settings.path)
 		 await this.device.setImg(settings.path).then(result => {
+		 	console.log(result)
 			this.connection.writeImage(result.asBinaryBuffer());
 			return this._status(req, res);
 		 })

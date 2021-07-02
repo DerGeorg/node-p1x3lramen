@@ -24,6 +24,28 @@ export default class Pixoo {
 		this.config = Object.assign({}, settings, DEFAULTS);
 	}
 
+	//Text
+	setText(text){
+		// var d = (new Divoom.TimeboxEvo()).createRequest('text', {text: text});
+		// d.paletteFn = d.PALETTE_BLACK_ON_CMY_RAINBOW;
+		// d.animFn = d.ANIM_HORIZONTAL_GRADIANT_BACKGROUND;
+		// var binAnimationBuffer = []
+		// for (var i = 0; i < 512; i++){
+		// 	var buf = d.getNextAnimationFrame().asBinaryBuffer()
+		// 	console.log("crate buf")
+		// 	console.log(buf);
+		// 	binAnimationBuffer.push(buf)
+		// }
+		// console.log("vor return")
+		// console.log(binAnimationBuffer)
+		// return binAnimationBuffer;
+		var d = (new Divoom.TimeboxEvo()).createRequest('text', {text: "MEIN TEST"})
+		d.paletteFn = d.PALETTE_TEXT_ON_BACKGROUND;
+		d.animFn = d.ANIM_UNI_GRADIANT_BACKGROUND;
+		d.text = "MEIN TEST";
+		return d;
+	}
+
 	// IMG
 
 	async setImg(path){

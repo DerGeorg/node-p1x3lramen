@@ -1,5 +1,6 @@
 import {EventEmitter} from 'events';
 import BluetoothSerialPort from 'node-bluetooth-serial-port';
+import {response} from "express";
 
 const DEFAULTS = {
 	deviceMAC: '',
@@ -91,10 +92,30 @@ export default class Connection extends EventEmitter {
 		result.forEach(elt => {
 			this._port.write(elt,
 				function(err, bytesWritten) {
-					if (err) console.log(err);
+					if (err) console.log("MY ERR: " + err);
 				}
 			);
 		})
+	}
+
+	async writeText(result){
+		for (var i = 0; i < result.length; i++){
+			console.log(result[i][0])
+			 this._port.write(result[i][0], function (err){
+				if(err) console.error(err);
+			})
+		}
+	}
+
+
+	async writer(buf){
+		console.log("buff")
+		console.log(buf)
+		return new Promise((resolve, reject) => {
+			this._port.write(buf, function (error, bytes) {
+				return !!error ? reject(error) : resolve(bytes);
+			})
+		});
 	}
 
 	/**
