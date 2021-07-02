@@ -94,6 +94,36 @@ pm2 log
 pm2 stop index
 ```
 
+
+MQTT
+-----------------------------------------------
+-----------------------------------------------
+MQTT is a great for integrating the Pixoo into other Sytems like Openhab.
+
+In `main.js` the settings for MQTT can be applied.
+```json
+mqtt: {
+  on: true,
+  address: "192.168.0.123",
+  port: 1883,
+  user: "username",
+  pw: "password",
+  topic: "divoom/pixoo",
+  clientId: "pixooAdapter"
+}
+```
+* `clientId` must be unique to connect
+* To login without username and pw, just leave the user and pw strings empty
+* `<TOPIC>` is defined in the settings in `main.js`
+* To disable mqtt set `on` to `false`
+
+### MQTT Api
+An MQTT Api entry is build up like this: `<TOPIC>/<COMMAND>` :  `<MESSAGE>`
+- `<TOPIC>/setscore` :  `{"red": 2, "blue": 3}` --> Switches to score mode and sets the scores
+  for red and blue
+
+
+
 Testing
 --------------------------------------------------
 ------------------------------

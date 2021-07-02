@@ -24,6 +24,15 @@ const settings = {
 		hostname: "localhost",
 		port: "8000",
 		autoConnect: true
+	},
+	mqtt: {
+		on: true,
+		address: "192.168.1.116",
+		port: 1883,
+		user: "openhab",
+		pw: "openhab",
+		topic: "divoom/pixoo",
+		clientId: "pixooAdapter"
 	}
 };
 
@@ -82,7 +91,7 @@ const settings = {
 	// is paired.
 	const connection = new Connection(settings.connection);
 	const device = new Pixoo(settings.device);
-	const service = new Service(settings.service);
+	const service = new Service(settings);
 
 	// Let's disconnect properly from the device.
 	process.on('SIGINT', (code) => {

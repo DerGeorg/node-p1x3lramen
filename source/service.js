@@ -1,6 +1,6 @@
 import express from 'express';
 const fileUpload = require('express-fileupload');
-
+import mqtt from 'mqtt'
 import {
 	testClockIntegration,
 	testLigtingIntegration,
@@ -8,7 +8,8 @@ import {
 	testClimateIntegration,
 	testBrightnessIntegration
 } from './integration.js';
-import Connection from "./connection";
+import {rejects} from "assert";
+
 
 const DEFAULTS = {
 	port: 8000,
@@ -18,10 +19,16 @@ const DEFAULTS = {
 
 export default class Service {
 	constructor(settings) {
-		this.config = Object.assign({}, DEFAULTS, settings)
+		this.config = Object.assign({}, DEFAULTS, settings.service)
 		this.connection = null;
 		this.device = null;
 		this.app = null;
+		// this.client = new MqttHandler(this.doScore);
+		if(settings.mqtt.on) {
+			this.connect();
+		}
+		// this.mqttconfig = settings;
+		// this.client = null;
 	}
 
 	start(connection, device) {
@@ -65,12 +72,42 @@ export default class Service {
 
 		this.app.get("/test", this._test.bind(this));
 
-		this.app.listen(this.config.port, () => {
+		this.app.listen(this.config.port, async () => {
 			console.log(`Listening on http://localhost:${this.config.port}`);
+
 		});
+
+		// if(this.mqttconfig.mqtt.on){
+		// 	console.log("starte mqtt")
+		// 	var options = {
+		// 		port: this.mqttconfig.port,
+		// 		host: this.mqttconfig.address,
+		// 		clientId: this.mqttconfig.clientId,
+		// 		username: this.mqttconfig.username,
+		// 		password: this.mqttconfig.pw,
+		// 		protocol: 'mqtt'
+		// 	}
+		// 	console.log("starte mqtt 2")
+		// 	// var client = mqtt.connect(options)
+		// 	this.client = mqtt.connect('ws://192.168.1.116:1883', {
+		// 		clientId: 'nodePixooClient'
+		// 	});
+		// 	console.log("starte mqtt 3")
+		// 	this.client.on("connect", () => {
+		// 		console.log("MQTT connected");
+		// 		this.client.subscribe("top")
+		// 		setInterval(() => client.publish('presence', `Hello mqtt`), 2000);
+		// 	})
+		// 	console.log("starte mqtt 4")
+		// 	this.client.on('message', function (topic, message) {
+		// 		console.log("topic: " + topic + " msg:" + message)
+		// 	});
+		// 	console.log("starte mqtt 5")
+
+		// }
 	}
 
-	async _upload(req, res){
+	async _upload(req, res) {
 		let sampleFile;
 		let uploadPath;
 		if (!req.files || Object.keys(req.files).length == 0) {
@@ -80,25 +117,25 @@ export default class Service {
 		sampleFile = req.files.file;
 		uploadPath = 'public' + '/uploads/' + sampleFile.name;
 		// Use the mv() method to place the file somewhere on your server
-		sampleFile.mv(uploadPath, async function(err) {
+		sampleFile.mv(uploadPath, async function (err) {
 			if (err)
 				return console.error(err);
 		})
 		return res.status(200).send(uploadPath);
 	}
 
-	 async _setImg(req, res){
-		 const settings = {};
-		 if (typeof req.query.path === 'string') {
-			 settings.path = req.query.path;
-		 }
-		 await this.device.setImg(settings.path).then(result => {
+	async _setImg(req, res) {
+		const settings = {};
+		if (typeof req.query.path === 'string') {
+			settings.path = req.query.path;
+		}
+		await this.device.setImg(settings.path).then(result => {
 			this.connection.writeImage(result.asBinaryBuffer());
 			return this._status(req, res);
-		 })
+		})
 	}
 
-	async _screenOFF(req, res){
+	async _screenOFF(req, res) {
 		const settings = {};
 		if (typeof req.query.enable === 'string') {
 			settings.enable = req.query.enable === 'true' ? true : false;
@@ -257,11 +294,12 @@ export default class Service {
 		if (req.query.blue && parseInt(req.query.blue, 10)) {
 			settings.blue = parseInt(req.query.blue, 10);
 		}
-		const msg = this.device.score(settings);
-		this.connection.writeAll(msg);
+console.log(settings)
+		this.doScore(settings)
 
 		return this._status(req, res);
 	}
+
 
 	async _effect(req, res) {
 		const settings = {};
@@ -311,10 +349,75 @@ export default class Service {
 		message = this.device.datetime();
 		this.connection.writeAll(message);
 
-		message = this.device.clock({mode: 6, showTime: true, showWeather: false, showTemperature: false, showCalendar: false, color: 'ffffff'});
+		message = this.device.clock({
+			mode: 6,
+			showTime: true,
+			showWeather: false,
+			showTemperature: false,
+			showCalendar: false,
+			color: 'ffffff'
+		});
 		this.connection.writeAll(message);
 
 		return this._status(req, res);
 	}
-}
 
+
+	async doScore(settings) {
+		const msg = this.device.score(settings);
+		this.connection.writeAll(msg);
+	}
+
+	async doScoreCb(topic, message){
+		const json = JSON.parse(message.toString())
+		const settings = {
+			red: json.red,
+			blue: json.blue
+		}
+		if(!this.connection.isConnected()) {
+			this.connection.connect().then(() => {
+				new Promise((resolve, reject) => {
+					resolve(this.doScore(settings))
+				})
+			})
+		}else {
+			new Promise((resolve, reject) => {
+				resolve(this.doScore(settings))
+			})
+		}
+	}
+
+
+	async connect() {
+		// Connect mqtt with credentials (in case of needed, otherwise we can omit 2nd param)
+		this.mqttClient = mqtt.connect('mqtt://192.168.1.116:1883');//, {clientId: 'bgtestnodejs', protocolId: 'mqtt', protocolVersion: 3, connectTimeout:1000, debug:true});//{ username: this.username, password: this.password });
+
+		// Mqtt error calback
+		this.mqttClient.on('error', (err) => {
+			console.log(err);
+			this.mqttClient.end();
+		});
+
+		// Connection callback
+		this.mqttClient.on('connect', () => {
+			console.log(`mqtt client connected`);
+		});
+
+		// mqtt subscriptions
+		this.mqttClient.subscribe('mytopic', {qos: 0});
+
+		// When a message arrives, console.log it
+		this.mqttClient.on('message', async (topic, message) => await this.doScoreCb(topic, message));
+
+		this.mqttClient.on('close', () => {
+			console.log(`mqtt client disconnected`);
+		});
+	}
+
+	// Sends a mqtt message to topic: mytopic
+	sendMessage(message) {
+		this.mqttClient.publish('mytopic', message);
+	}
+
+
+}
