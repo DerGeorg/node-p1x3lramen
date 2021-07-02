@@ -903,9 +903,10 @@ export default class Service {
 		const setStr = '/set/'
 		const getStr = '/get/'
 		const setCommands = ['score','img','visualization','effect','screenOff','climate','brightness','clock', 'status', 'connect', 'disconnect', 'lightning', 'datetime', 'fullday']
-		for(let com in setCommands){
+		setCommands.forEach(com => {
+			console.log(settings.topic + setStr + com)
 			this.mqttClient.subscribe(settings.topic + setStr + com, {qos: 0});
-		}
+		});
 		// When a message arrives, console.log it
 		this.mqttClient.on('message', async (topic, message) => {
 			console.log("TOPIC: " + topic + " MSG " + message.toString())
