@@ -32,7 +32,6 @@
     "gifwrap": "^0.9.2",
     "jimp": "^0.16.1",
     "mqtt": "^4.2.8",
-    "node": "^16.4.0",
     "node-bluetooth-serial-port": "^2.2.7",
     "node-divoom-timebox-evo": "^0.3.0",
     "util": "^0.12.4"
