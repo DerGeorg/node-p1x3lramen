@@ -125,7 +125,18 @@ An MQTT Api entry is build up like this: `<TOPIC>/<COMMAND>` :  `<MESSAGE>`
 - `/divoom/pixoo/set/score` :  `{"red": <num>, "blue": <num>}` --> Switches to score mode and sets the scores
   for red and blue
 - `/divoom/pixoo/set/img` : `{"path": "<string>"}` --> Displays the image on the Pixoo. With HTTP GET `/api/upload` you can get the path
-
+- `/divoom/pixoo/set/visualization` : `{"mode":<int>}`
+- `/divoom/pixoo/set/effect` : `{"mode":<int>}`
+- `/divoom/pixoo/set/screenOff` : `{"enable":<bool>}`
+- `/divoom/pixoo/set/climate` : `{"weather":<int>,"temperature":<int>}`
+- `/divoom/pixoo/set/brightness` : `{"level":<int>}`
+- `/divoom/pixoo/set/clock` : `{"mode":<int>,"showTime":<bool>,"showWeather":<bool>,"showTemperature":<bool>,"showCalendar":<bool>,"color":<string>}`
+- `/divoom/pixoo/set/status` --> Send Status via Mqtt to <TOPIC>/get/status
+- `/divoom/pixoo/set/connect` --> Connects with BLE
+- `/divoom/pixoo/set/fullday` : `{"enable":<bool>}`
+- `/divoom/pixoo/set/disconnect` --> Disconnect from BLE
+- `/divoom/pixoo/set/datetime` : `{"date":<string>, "fulldayMode":<bool>}`
+- `/divoom/pixoo/set/lightning` : `{"color":<string>,"brightness":<int>,"mode":<int>,"powerScreen"<bool>}`
 
 Testing
 --------------------------------------------------
