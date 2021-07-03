@@ -604,8 +604,8 @@ export default class Service {
 	async doClimateCb(topic, message){
 		const json = JSON.parse(message.toString())
 		const settings = {
-			weather: json.weather,
-			temperature: json.temperature
+			weather: parseInt(json.weather, 10),
+			temperature: parseInt(json.temperature,10)
 		}
 		if(!this.connection.isConnected()) {
 			this.connection.connect().then(() => {
