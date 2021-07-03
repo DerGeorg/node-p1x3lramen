@@ -383,7 +383,8 @@ export default class Service {
 	async doScreenOFFCb(topic, message){
 		const json = JSON.parse(message.toString())
 		const settings = {
-			enable: json.enable}
+			enable: json.enable === 'true' ? true : false
+		}
 		if(!this.connection.isConnected()) {
 			this.connection.connect().then(() => {
 				new Promise((resolve, reject) => {
