@@ -559,7 +559,7 @@ export default class Service {
 	 * Send Status via Mqtt to <TOPIC>/get/status
 	 */
 	statusCb(){
-		this.sendMessage(this.mqttsettings.topic + '/get/status', this.device.config)
+		this.sendMessage(this.mqttsettings.topic + '/get/status', JSON.stringify(this.device.config))
 	}
 
 	// Climate
@@ -607,6 +607,7 @@ export default class Service {
 			weather: parseInt(json.weather, 10),
 			temperature: parseInt(json.temperature,10)
 		}
+		console.log(settings)
 		if(!this.connection.isConnected()) {
 			this.connection.connect().then(() => {
 				new Promise((resolve, reject) => {
@@ -968,7 +969,7 @@ export default class Service {
 	 * @param message Send the msg
 	 */
 	sendMessage(topic, message) {
-		this.mqttClient.publish(topic, message);
+		this.mqttClient.publish(topic.toString(), message.toString());
 	}
 
 
